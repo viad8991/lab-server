@@ -3,17 +3,21 @@ package org.example
 import io.ktor.application.call
 import io.ktor.http.ContentType
 import io.ktor.response.respondText
+import io.ktor.routing.delete
 import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.routing.put
 import io.ktor.routing.routing
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.StdOutSqlLogger
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.addLogger
+import org.jetbrains.exposed.sql.deleteAll
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
@@ -24,7 +28,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.osgi.service.component.annotations.Component
 
-fun main(){
+fun main() {
     HousingCommunalService()
 }
 
@@ -54,6 +58,12 @@ class HousingCommunalService {
                     val value = call.parameters["counter"]
                     if (value != null) {
                         call.respondText(DataBaseHaTwo.payments(value.toLong()), ContentType.Application.Json)
+                    }
+                }
+                delete("counters/{counter}"){
+                    val value = call.parameters["counter"]
+                    if (value != null) {
+                        DataBaseHaTwo.deleteCounter(value.toLong()
                     }
                 }
                 //3
@@ -159,7 +169,7 @@ object DataBaseHaTwo {
                 })
             }
         }
-        return JSONObject().put("payments",jsonArray).toString()
+        return JSONObject().put("payments", jsonArray).toString()
     }
 
     fun addPayment(counter: Long, counterRead: Long, date: DateTime = DateTime.now()): Long {
@@ -208,6 +218,13 @@ object DataBaseHaTwo {
         }
         return time
     }
+
+    fun deleteCounter(idCounter: Long) {
+        transaction {
+            addLogger(StdOutSqlLogger)
+            Counter.deleteWhere { Counter.id.eq(idCounter) }
+        }
+    }
 }
 
 object Counter : Table("counter") {
@@ -223,5 +240,5 @@ object Payment : Table("payment") {
     val idCounter = long("id_counter")
 
     val counterReading = long("counter_reading")
-    val lastUpdate = date("last_update")
+    val lastUpdate: Column<DateTime> = date("last_update")
 }
